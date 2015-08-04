@@ -1,0 +1,68 @@
+#!/bin/sh
+
+[ -s $0 ] && THIS_SCRIPT=$(readlink $0) || THIS_SCRIPT=$(realpath $0)
+SCRIPT_DIR=$(realpath $(dirname "$THIS_SCRIPT"))
+WORKSPACE_DIR="$HOME/Workspace"
+PROJ_DIR="$WORKSPACE_DIR/$1"
+OUTPUT="$2"
+TARGET="$3"
+DEFAULT_FLAGS="\"-I$PROJ_DIR/src\" -std=c++1y -Wall -Wextra -g -O0 -DDEBUG -pipe"
+FLAGS="$DEFAULT_FLAGS $4"
+LNK_FLAGS="$5"
+MAKEFILE="$OUTPUT/Makefile"
+PUILD="$SCRIPT_DIR/puild"
+
+if [ "$#" -le 1 ]; then
+  echo "Usage: $(basename $THIS_SCRIPT) OUTPUT-DIR TARGET [COMPILE-FLAGS] [LINK-FLAGS]"
+
+  echo "  OUTPUT-DIR     :  generate Makefile to"
+  echo "  TARGET         :  a subdir of <PROJECT-ROOT>, contains the \`main()' function"
+  echo "                    e.g. : test/log -> compile \`$PROJ_DIR/test/log/*' to \`log'"
+  echo "  COMPILE-FLAGS  :  pass to \${CXX}"
+  echo "                    default : $DEFAULT_FLAGS"
+  echo "  LINK-FLAGS     :  pass to linker"
+  echo "                    default : (none)"
+
+  echo ""
+
+  echo "Note: PROJECT-ROOT is $PROJ_DIR"
+
+  if [ -d "$PROJ_DIR/test" ]; then
+    echo "Note: TEST-TARGETS are"
+
+    for t in $(ls "$PROJ_DIR/test"); do
+      echo "  test/$t"
+    done
+  else
+    echo "Note: No TEST-TARGETS available"
+  fi
+
+  echo "Error: arguments expected!"
+  exit 1
+fi
+
+
+echo "OUTPUT DIR      : $OUTPUT"
+echo "OUTPUT FILE     : $MAKEFILE"
+echo "COMPILE FLAGS   : $FLAGS"
+echo "LINK FLAGS      : $LNK_FLAGS"
+echo "SOURCE DIRS     : $PROJ_DIR/src, $PROJ_DIR/$TARGET"
+echo "TARGET          : $(basename $TARGET) ($PROJ_DIR/$TARGET)"
+echo "PROJECT ROOT    : $PROJ_DIR"
+echo ""
+
+if [ -x "$PUILD" ]; then
+  [ -d "$OUTPUT" ] || mkdir -p "$OUTPUT"
+  "$PUILD" "$(basename $TARGET)" "$PROJ_DIR/src:$PROJ_DIR/$TARGET" \
+           "$FLAGS"  "$LNK_FLAGS" > "$MAKEFILE"
+
+  echo "Done!"
+else
+  echo "puild script ($PUILD) not found."
+  echo ""
+  echo "Error: failed to generate Makefile!"
+  exit -1
+fi
+
+
+
