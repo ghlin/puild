@@ -9,12 +9,19 @@ sub chkext {
       || $ext eq '.cxx' || $ext eq '.c++' || $ext eq '.c';
 }
 
-sub compiler {
+# XXX
+sub compiler_var {
   my $ext = shift;
 
   return '${CC}' if $ext eq '.c';
 
   return '${CXX}'
+}
+
+sub compiler {
+  my $ext = shift;
+  return 'gcc' if $ext eq '.c';
+  return 'g++'
 }
 
 sub linker {
@@ -49,17 +56,18 @@ sub puild {
     my $file = $File::Find::name;
     my ($name, $dir, $ext) = fileparse($file, @suffix);
 
-    return unless (-f $file && chkext $ext); # skip if not c++ chkext file
-
-    my @result  = (split /:/, `g++ -MM $flags $file`); # use g++ -MM to detect deps
-    my $deps    = $result[1];                          # output like -> target.o : <dep-list>
-    my $target  = $File::Find::dir . '_' . $result[0]; # avoid duplicated target
-                                                       # tr '/' -> '_'
-    $target =~ s/\//_/g;
+    return unless (-f $file && chkext $ext); # skip if not source file
 
     my $compiler = compiler $ext;
-    my $command  = "\t\@echo \"Compiling: $name$ext\"\n"
-                 . "\t\@$compiler -c $file -o $target \${FLAGS} \${PREFLAGS}\n";
+    my @result   = (split /:/, `$compiler -MM $flags $file`); # use g++/gcc -MM to detect deps
+    my $deps     = $result[1];
+    my $target   = $File::Find::dir . '_' . $result[0]; # avoid duplicated target name
+
+    $target =~ s/\//_/g; # tr '/' -> '_'
+
+    my $compiler_var = compiler_var $ext;
+    my $command      = "\t\@echo \"Compiling: $name$ext\"\n"
+                     . "\t\@$compiler_var -c $file -o $target \${FLAGS} \${PREFLAGS}\n";
 
     $rules .= $target . " : \\\n"; # xxx_yyy_zzz_target.o : \
     $rules .= $deps;               #  xxx.yyy.h aaa.bbb.h ...
