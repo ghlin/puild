@@ -60,6 +60,9 @@ sub puild {
 
     my $compiler = compiler $ext;
     my @result   = (split /:/, `$compiler -MM $flags $file`); # use g++/gcc -MM to detect deps
+
+    return unless $result[0];
+
     my $deps     = $result[1];
     my $target   = $File::Find::dir . '_' . $result[0]; # avoid duplicated target name
 
@@ -96,10 +99,103 @@ sub puild {
   join "\n", ($head, $all, $clean, $link, $rules);
 }
 
-my $prog      = shift @ARGV;
-my $dir       = shift @ARGV;
-my $flags     = shift @ARGV;
-my $linkflags = shift @ARGV;
+my $usage = << 'USAGE'
+puild <COMMAND> <ARGUMENTS...>;
 
-say puild $prog, $dir, $flags, $linkflags;
+  puild S <PROG-NAME> <SRC-DIRS> [<COMPILE-FLAGS>] [<LINK-FLAGS>];
+  puild P <PRESETS> <PROG-NAME> <SRC-DIRS> [<COMPILE-FLAGS>] [<LINK-FLAGS>];
+
+
+<SRC-DIRS> is a list of dirs, delimited by comma (,)
+<PRESETS> is a list of preset, delimited by comma (,)
+
+presets:
+
+  PRESET      COMPILE-FLAGS             LINK-FLAGS
+  c++1y        -std=c++1y
+  c++11        -std=c++11
+  c++14        -std=c++14
+  c11          -std=c11
+  c99          -std=c99
+  mt           -pthread                   -pthread
+  debug        -g -DDEBUG                 -rdynamic
+
+special presets:
+ *gnu       use along with a c** PRESET, override -std=c** to -std=gnu**
+
+USAGE
+;
+
+sub make_sub {
+  my $ver  = shift;
+  my $lang = shift;
+  return sub {
+    my $set = $_[0] || { gnu => 'c' };
+    my $c = $set->{gnu};
+    [ "-std=$c$lang$ver", "" ];
+  }
+}
+sub make_preset {
+  [ $_[0], $_[1] ];
+}
+
+my $presets = {};
+
+$presets->{'c++11'}   = make_sub"11", "++";
+$presets->{'c++14'}   = make_sub"14", "++";
+$presets->{'c++1y'}   = make_sub"1y", "++";
+$presets->{'c11'}     = make_sub"11", "";
+$presets->{'c99'}     = make_sub"99", "";
+$presets->{'mt'}      = make_preset "-pthread", "-pthread";
+$presets->{'debug'}   = make_preset "-g -DDEBUG -O0", "-rdynamic";
+$presets->{'release'} = make_preset "-DNDEBUG -O3", "";
+$presets->{'foo'}     = make_preset '-I$HOME/.local/include', "";
+$presets->{'baka'}    = sub { say "YOU BAKA!"; exit -1; };
+
+sub process_command_p {
+  my @selected      = split /,/, shift;
+  my $prog          = shift or die $usage;
+  my $dir           = shift or die $usage;
+  my $compile_flags = shift || "";
+  my $link_flags    = shift || "";
+  my $ext           = { gnu => 'c' };
+  my $empty         = [ "", "" ];
+
+  foreach (@selected) {
+    $ext->{gnu} = 'gnu' if ($_ eq 'gnu'); # override it here
+  }
+
+  foreach my $option (@selected) {
+    my $flags = $presets->{$option}
+      ? $presets->{$option}->($ext) # hit
+      : $empty;                     # fallback
+
+    $compile_flags .= " " . $flags->[0];
+    $link_flags    .= " " . $flags->[1];
+  }
+
+  say puild $prog, $dir, $compile_flags, $link_flags;
+}
+
+
+sub process_command_s {
+  #XXX: Caution!!! dumplicated code!!!
+
+  my $prog      = shift or die $usage;
+  my $dir       = shift or die $usage;
+  my $flags     = shift || "";
+  my $linkflags = shift || "";
+
+  say puild $prog, $dir, $flags, $linkflags;
+}
+
+my $select = shift @ARGV or die $usage;
+
+#XXX: dirty...
+if ($select =~ /P.*/) {
+  process_command_p @ARGV;
+} elsif ($select =~ /S.*/) {
+  process_command_s @ARGV;
+} else { die $usage; }
+
 
