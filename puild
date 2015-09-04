@@ -136,21 +136,27 @@ sub make_sub {
   }
 }
 sub make_preset {
-  [ $_[0], $_[1] ];
+  my $c = $_[0];
+  my $l = $_[1];
+
+  return sub {
+    [ $c, $l ];
+  };
 }
 
 my $presets = {};
 
-$presets->{'c++11'}   = make_sub"11", "++";
-$presets->{'c++14'}   = make_sub"14", "++";
-$presets->{'c++1y'}   = make_sub"1y", "++";
-$presets->{'c11'}     = make_sub"11", "";
-$presets->{'c99'}     = make_sub"99", "";
-$presets->{'mt'}      = make_preset "-pthread", "-pthread";
-$presets->{'debug'}   = make_preset "-g -DDEBUG -O0", "-rdynamic";
-$presets->{'release'} = make_preset "-DNDEBUG -O3", "";
-$presets->{'foo'}     = make_preset '-I$HOME/.local/include', "";
-$presets->{'baka'}    = sub { say "YOU BAKA!"; exit -1; };
+$presets->{'c++11'} = make_sub"11", "++";
+$presets->{'c++14'} = make_sub"14", "++";
+$presets->{'c++1y'} = make_sub"1y", "++";
+$presets->{c11}     = make_sub"11", "";
+$presets->{c99}     = make_sub"99", "";
+$presets->{lua}     = make_preset "", "-llua";
+$presets->{mt}      = make_preset "-pthread", "-pthread";
+$presets->{debug}   = make_preset "-g -DDEBUG -O0", "-rdynamic";
+$presets->{release} = make_preset "-DNDEBUG -O3", "";
+$presets->{foo}     = make_preset '-I$HOME/.local/include', "";
+$presets->{baka}    = sub { say "YOU BAKA!"; exit -1; };
 
 sub process_command_p {
   my @selected      = split /,/, shift;
