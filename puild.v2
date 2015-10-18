@@ -178,8 +178,17 @@ my $link_flags = '';
 my $target     = 'a.out';
 my $marked     = {};
 
+sub show_usage_and_exit {
+  say $usage;
+  exit shift;
+}
+
+show_usage_and_exit -1 unless scalar @ARGV;
+
 foreach my $arg (@ARGV) {
-  if ($arg eq '-d' || $arg eq '-c' ||
+  if ($arg eq '-h') {
+    show_usage_and_exit 0;
+  } elsif ($arg eq '-d' || $arg eq '-c' ||
       $arg eq '-l' || $arg eq '-p' ||
       $arg eq '-o') {
     $state = $arg;
