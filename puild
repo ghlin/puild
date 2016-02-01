@@ -72,34 +72,29 @@ sub makefile {
   my $clean   = 'clean:' . make_clean $target_name;
 
   my @targets;
-  my %found;
-
   my @suffix = qw(.C .cc .cpp .cxx .c++ .c);
 
   my @input_files;
 
   finddepth sub {
-    my $file               = $File::Find::name;
-    my ($name, $dir, $ext) = fileparse($file, @suffix);
-
-    return unless (-f $file && chkext $ext);
-    return if ($found{$file});
-
-    $found{$file} = 1;
-    push @input_files, { name => $name, dir => $dir, ext => $ext , file => $file };
+    push @input_files, $File::Find::name;
   }, $_ foreach (@$dirs);
 
-  foreach my $input (@input_files) {
-    my $name         = $input->{name};
-    my $dir          = $input->{dir};
-    my $ext          = $input->{ext};
-    my $file         = $input->{file};
+  my %found;
+
+  foreach my $file (@input_files) {
+    my ($name, $dir, $ext) = fileparse($file, @suffix);
+
+    next if ($found{$file});
+    $found{$file} = 1;
+
+    next unless (-f $file && chkext $ext);
 
     my $lang         = get_lang_by_ext $ext;
     my $compiler     = get_compiler_by_lang $lang, $toolchains->{LLVM};
     my $compiler_var = get_compiler_var_by_lang $lang;
 
-    my @result       = split /:/, `$compiler -MM $file $flags`; # !!!
+    my @result       = split /:/, `$compiler -MM $file $flags`;
 
     die "Compiler raised an error!" unless $result[0];
 
@@ -132,7 +127,9 @@ sub makefile {
            . "PRELNKFLAGS     :=$link_flags\n"
            . "FLAGS           :=\n"
            . "LNKFLAGS        :=\n";
+
   my $all  = "all : @targets $target_name\n";
+
   my $link = "$target_name : @targets\n"
            . "\t\@echo Linking: $target_name\n"
            . "\t\@$linker_cmd @targets -o $target_name \${LNKFLAGS} \${PRELNKFLAGS}\n";
