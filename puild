@@ -99,7 +99,7 @@ sub makefile {
 
     die "Compiler raised an error!" unless $result[0];
 
-    my $deps    =   $result[1];
+    my $deps    =   "$output_dir $result[1]";
     my $target  =   $dir . '_' . $result[0];
     $target     =~  s/\//_/g;
     $target     =~  s/\./_/g;
@@ -116,6 +116,7 @@ sub makefile {
 
     $lnklang  = update_linker_lang $lang, $lnklang;
     $clean   .= make_clean $target;
+
     push @targets, $target;
   }
 
@@ -132,7 +133,7 @@ sub makefile {
 
   my $all  = "all : $output_dir @targets $target_name\n";
 
-  my $dir  = "$output_dir :\n"
+  my $dir  = ".PHONY: $output_dir\n$output_dir :\n"
            . "\t\@echo prepare output dir.\n"
            . "\t\@[ -d $output_dir ] || mkdir $output_dir\n";
 
