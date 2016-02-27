@@ -9,8 +9,9 @@ sub chkext {
       || $ext eq '.cxx' || $ext eq '.c++' || $ext eq '.c';
 }
 
-our $c_lang   = 1;
-our $cxx_lang = 2;
+our $c_lang     = 1;
+our $cxx_lang   = 2;
+our $output_dir = "objs";
 
 sub get_lang_by_ext {
   my $ext = shift;
@@ -103,6 +104,7 @@ sub makefile {
     $target     =~  s/\//_/g;
     $target     =~  s/\./_/g;
     $target     =~  s/_o$/.o/g;
+    $target     =   "$output_dir/$target";
 
     my $command = "\t\@echo \"$compiler $file\"\n"
                 . "\t\@$compiler_var -c $file -o $target \${FLAGS} \${PREFLAGS}\n";
@@ -128,13 +130,18 @@ sub makefile {
            . "FLAGS           :=\n"
            . "LNKFLAGS        :=\n";
 
-  my $all  = "all : @targets $target_name\n";
+  my $all  = "all : $output_dir @targets $target_name\n";
+
+  my $dir  = "$output_dir :\n"
+           . "\t\@echo prepare output dir.\n"
+           . "\t\@[ -d $output_dir ] || mkdir $output_dir\n";
+
 
   my $link = "$target_name : @targets\n"
            . "\t\@echo Linking: $target_name\n"
            . "\t\@$linker_cmd @targets -o $target_name \${LNKFLAGS} \${PRELNKFLAGS}\n";
 
-  join "\n", ($head, $all, $clean, $link, $rules);
+  join "\n", ($head, $all, $dir, $clean, $link, $rules);
 }
 
 my $usage = << 'USAGE'
@@ -178,12 +185,13 @@ $presets->{gnu11}     = make_preset "-std=gnu11", "";
 $presets->{gnu99}     = make_preset "-std=gnu99", "";
 $presets->{lua}       = make_preset "", "-llua";
 $presets->{mt}        = make_preset "-pthread", "-lthread -pthread";
+$presets->{strict}    = make_preset "-Wall -Wextra -W", "";
 $presets->{debug}     = make_preset "-g -DDEBUG -O0", "-rdynamic";
 $presets->{release}   = make_preset "-DNDEBUG -O3", "";
 $presets->{brew}      = make_preset "-I/usr/local/include", "-L/usr/local/lib";
 $presets->{sdl}       = make_preset "", "-lSDL2 -lSDL2_image -lSDL2_ttf";
 
-my $state      = '-d';
+my $state      = '---d';
 
 my @dirs;
 my $flags      = '';
@@ -199,25 +207,25 @@ sub show_usage_and_exit {
 show_usage_and_exit -1 unless scalar @ARGV;
 
 foreach my $arg (@ARGV) {
-  if ($arg eq '-h') {
+  if ($arg eq '---h') {
     show_usage_and_exit 0;
-  } elsif ($arg eq '-d' || $arg eq '-c' || $arg eq '-l' || $arg eq '-p' || $arg eq '-o') {
+  } elsif ($arg eq '---d' || $arg eq '---c' || $arg eq '---l' || $arg eq '---p' || $arg eq '---o') {
     $state = $arg;
   } else {
-    if ($state eq '-d')    { push @dirs, $arg; }
-    elsif ($state eq '-c') { $flags .= ' ' . $arg; }
-    elsif ($state eq '-l')  { $link_flags .= ' ' . $arg; }
-    elsif ($state eq '-o') { $target = $arg; }
-    elsif ($state eq '-p') {
-        next if $marked->{$arg};
-        $marked->{$arg} = 1;
+    if ($state eq '---d')    { push @dirs, $arg; }
+    elsif ($state eq '---c') { $flags .= ' ' . $arg; }
+    elsif ($state eq '---l') { $link_flags .= ' ' . $arg; }
+    elsif ($state eq '---o') { $target = $arg; }
+    elsif ($state eq '---p') {
+      next if $marked->{$arg};
+      $marked->{$arg} = 1;
 
-        my $p = $presets->{$arg};
+      my $p = $presets->{$arg};
 
-        next unless $p;
+      next unless $p;
 
-        $flags         .= " " . $p->[0];
-        $link_flags    .= " " . $p->[1];
+      $flags         .= " " . $p->[0];
+      $link_flags    .= " " . $p->[1];
     } else {
       die "WTF";
     }
