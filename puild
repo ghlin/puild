@@ -99,7 +99,7 @@ sub makefile {
 
     die "Compiler raised an error!" unless $result[0];
 
-    my $deps    =   "$output_dir $result[1]";
+    my $deps    =   $result[1];
     my $target  =   $dir . '_' . $result[0];
     $target     =~  s/\//_/g;
     $target     =~  s/\./_/g;
@@ -134,9 +134,7 @@ sub makefile {
   my $all  = "all : $output_dir @targets $target_name\n";
 
   my $dir  = ".PHONY: $output_dir\n$output_dir :\n"
-           . "\t\@echo prepare output dir.\n"
            . "\t\@[ -d $output_dir ] || mkdir $output_dir\n";
-
 
   my $link = "$target_name : @targets\n"
            . "\t\@echo Linking: $target_name\n"
@@ -145,28 +143,7 @@ sub makefile {
   join "\n", ($head, $all, $dir, $clean, $link, $rules);
 }
 
-my $usage = << 'USAGE'
-puild -d <SRC-DIRS> -c <COMPILE-FLAGS> -l <LINK-FLAGS> -p <PRESETS> -o <TARGET>
 
-  presets:
-
-    PRESET      COMPILE-FLAGS                              LINK-FLAGS
-    c++1y        -std=c++1y
-    c++11        -std=c++11
-    c++14        -std=c++14
-    c11          -std=c11
-    c99          -std=c99
-    gnu++1y      -std=gnu++1y
-    gnu++11      -std=gnu++11
-    gnu++14      -std=gnu++14
-    gnu11        -std=gnu11
-    gnu99        -std=gnu99
-    mt           -pthread                                   -lthread -pthread
-    lua                                                     -llua
-    debug        -g -DDEBUG -W -O -Wall -Wextra             -rdynamic
-
-USAGE
-;
 
 sub make_preset {
   [ $_[0], $_[1] || "" ];
@@ -192,6 +169,9 @@ $presets->{release}   = make_preset "-DNDEBUG -O3", "";
 $presets->{brew}      = make_preset "-I/usr/local/include", "-L/usr/local/lib";
 $presets->{sdl}       = make_preset "", "-lSDL2 -lSDL2_image -lSDL2_ttf";
 
+my $usage         = "puild -d <SRC-DIRS> -c <COMPILE-FLAGS> -l <LINK-FLAGS> -p <PRESETS> -o <TARGET>";
+my $presets_list  = join ", ", keys $presets;
+
 my $state      = '---d';
 
 my @dirs;
@@ -202,6 +182,8 @@ my $marked     = {};
 
 sub show_usage_and_exit {
   say $usage;
+  say "  presets:";
+  say "  $presets_list";
   exit shift;
 }
 
