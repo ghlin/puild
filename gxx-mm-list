@@ -1,0 +1,117 @@
+#!/usr/bin/perl -w
+
+use 5.010;
+use strict;
+
+our $toolchains = {
+  GCC  => { C => 'gcc'
+          , X => 'g++' },
+
+  LLVM => { C => 'clang'
+          , X => 'clang++' },
+};
+
+sub get_compiler_by_compiler_type {
+  my $compiler_type = shift;
+  my $toolchain     = shift;
+
+  $toolchains->{$toolchain}->{$compiler_type}
+    or die "No such toolchain : $toolchain";
+}
+
+sub get_ext_name {
+  my $file = shift;
+
+  use File::Basename;
+
+  my @suffix = qw(.C .cc .cpp .cxx .c++ .c);
+  my @result = fileparse($file, @suffix);
+
+  $result[2];
+}
+
+sub select_compiler_type_by_ext {
+  my $ext = shift;
+
+  my $lookup =
+  { ".cc"  => 'X'
+  , ".cxx" => 'X'
+  , ".cpp" => 'X'
+  , ".c++" => 'X'
+  , ".C"   => 'X'
+  , ".c"   => 'C'
+  };
+
+  $lookup->{$ext} or die "Not C/C++ source file!";
+}
+
+sub select_compiler_by_ext {
+  my $ext       = shift;
+  my $toolchain = shift;
+
+  my $compiler_type = select_compiler_type_by_ext $ext;
+
+  get_compiler_by_compiler_type $compiler_type, $toolchain;
+}
+
+my $state       = '-i';
+my $toolchain   = 'GCC';
+my $flags       = '';
+my $output_file = 'a.mm-list.txt';
+my $input_file;
+
+sub show_usage_exit {
+  ...
+}
+
+foreach my $arg (@ARGV) {
+  say STDERR "DEBUG *** Arg:   $arg";
+  say STDERR "DEBUG *** State: $state";
+
+  if ($state eq '-c') {
+    $flags .= ' ' . $arg;
+  } elsif ($state eq '-o') {
+    $output_file = $arg;
+    $state       = '~';
+  } elsif ($state eq '-i') {
+    $input_file  = $arg;
+    $state       = '~';
+  } elsif ($state eq '-t') {
+    $toolchain   = $arg;
+  } elsif ($state eq '-p') {
+    # TODO
+    # apply presets here.
+    ...
+  } elsif ($arg eq '-h') {
+    show_usage_exit(0);
+  } else {
+    $state = $arg;
+  }
+}
+
+say STDERR "DEBUG *** Args:          [ @ARGV ]";
+say STDERR "DEBUG *** Input file:    $input_file";
+say STDERR "DEBUG *** Output file:   $output_file";
+say STDERR "DEBUG *** Flags:         $flags";
+say STDERR "DEBUG *** Presets:       <...>";
+
+my $input_file_ext = get_ext_name $input_file;
+my $compiler_exec  = select_compiler_by_ext $input_file_ext, $toolchain;
+my $command = join " ",
+            ( $compiler_exec
+            , $input_file
+            , '-MM'
+            , $flags);
+
+say STDERR "DEBUG *** will execute command: [$command]";
+
+my @result = split /:/, `$command`;
+
+die "Compiler raised an error!" unless $result[0];
+
+my @deps   = split /\\s*/, $result[1];
+my $target = $result[0];
+
+say STDERR "deps = [ @deps ]";
+say STDERR "targ = [$target]";
+

@@ -5,8 +5,13 @@ use strict;
 
 sub chkext {
   my $ext = shift;
-  return $ext eq '.cc'  || $ext eq '.cpp' || $ext eq '.C'
-      || $ext eq '.cxx' || $ext eq '.c++' || $ext eq '.c';
+
+  return $ext =~ '\w*.cc$'
+    ||   $ext =~ '\w*.cpp$'
+    ||   $ext =~ '\w*.C$'
+    ||   $ext =~ '\w*.cxx$'
+    ||   $ext =~ '\w*.c++$'
+    ||   $ext =~ '\w*.c$';
 }
 
 our $c_lang     = 1;
@@ -89,7 +94,9 @@ sub makefile {
     next if ($found{$file});
     $found{$file} = 1;
 
-    next unless (-f $file && chkext $ext);
+    next unless (-f $file && chkext $file);
+
+    say STDERR "select: $file";
 
     my $lang         = get_lang_by_ext $ext;
     my $compiler     = get_compiler_by_lang $lang, $toolchains->{LLVM};
@@ -106,7 +113,7 @@ sub makefile {
     $target     =~  s/_o$/.o/g;
     $target     =   "$output_dir/$target";
 
-    my $command = "\t\@echo \"$compiler $file\"\n"
+    my $command = "\t\@echo \"compile($compiler) - $file\"\n"
                 . "\t\@$compiler_var -c $file -o $target \${FLAGS} \${PREFLAGS}\n";
 
     $rules .= $target . " : \\\n";
@@ -140,7 +147,7 @@ sub makefile {
            . "\t\@echo Linking: $target_name\n"
            . "\t\@$linker_cmd @targets -o $target_name \${LNKFLAGS} \${PRELNKFLAGS}\n";
 
-  join "\n", ($head, $all, $dir, $clean, $link, $rules);
+  join "\n", ($head, $all, $dir, $link, $rules, $clean);
 }
 
 
