@@ -181,7 +181,7 @@ $presets->{brew}      = make_preset "-I/usr/local/include", "-L/usr/local/lib";
 $presets->{sdl}       = make_preset "", "-lSDL2 -lSDL2_image -lSDL2_ttf";
 
 my $usage         = "puild -d <SRC-DIRS> -c <COMPILE-FLAGS> -l <LINK-FLAGS> -p <PRESETS> -o <TARGET>";
-my $presets_list  = join ", ", keys $presets;
+my $presets_list  = join ", ", keys %{$presets};
 
 my $state      = '---d';
 
